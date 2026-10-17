@@ -68,19 +68,56 @@ document.querySelector('#accessModal .btn').onclick=demoRegister;
 const renderCourseDetails=showCourse;showCourse=async function(id){const c=courses.find(x=>x.id===id);if(!demoSignedIn){showAccess();return}if(!resources[id])await loadCourseContent();if(!resources[id]){notify('لم يتوفر محتوى هذه الدورة بعد.');return}if(c.category==='paid'){document.getElementById('payCourseName').textContent=c.title.ar;openModal('payModal');return}renderCourseDetails(id)};
 </script>
 <script>courses.forEach(c=>{c.category="free";c.price=0});filter="all";render();</script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const nawaAuth=window.supabase.createClient('https://dxtxxbbkyyjfqihjhgca.supabase.co','sb_publishable_z2u3iquFvp1bOyRjxnCuMA_vfd0mmm9');
+const nawaSupabaseUrl='https://dxtxxbbkyyjfqihjhgca.supabase.co';
+const nawaPublishableKey='sb_publishable_z2u3iquFvp1bOyRjxnCuMA_vfd0mmm9';
+const nawaSessionKey='nawa-auth-session-v1';
 const nawaSiteUrl='https://alisadoonaskar.github.io/nawa-academy/';
+let nawaSession=null;
+function saveNawaSession(session){
+  if(!session||!session.access_token){localStorage.removeItem(nawaSessionKey);nawaSession=null;updateNawaAccount(null);return}
+  if(!session.expires_at&&session.expires_in)session.expires_at=Math.floor(Date.now()/1000)+session.expires_in;
+  localStorage.setItem(nawaSessionKey,JSON.stringify(session));nawaSession=session;updateNawaAccount(session)
+}
+function readNawaSession(){try{return JSON.parse(localStorage.getItem(nawaSessionKey)||'null')}catch{return null}}
+async function nawaRequest(path,options={},accessToken=null){
+  const headers={apikey:nawaPublishableKey,'Content-Type':'application/json'};
+  if(accessToken)headers.Authorization='Bearer '+accessToken;
+  const response=await fetch(nawaSupabaseUrl+path,{...options,headers:{...headers,...(options.headers||{})}});
+  const raw=await response.text();let data={};
+  try{data=raw?JSON.parse(raw):{}}catch{data={message:raw}}
+  if(!response.ok)throw new Error(data.msg||data.message||data.error_description||data.error||('HTTP '+response.status));
+  return data;
+}
+function sessionFromResponse(data){
+  const session=data.session||data;
+  if(!session.access_token)return null;
+  return {access_token:session.access_token,refresh_token:session.refresh_token,token_type:session.token_type||'bearer',expires_in:session.expires_in,expires_at:session.expires_at||Math.floor(Date.now()/1000)+(session.expires_in||3600),user:session.user||data.user||null}
+}
+async function getNawaSession(){
+  let session=nawaSession||readNawaSession();
+  if(!session)return null;
+  if(session.expires_at&&session.expires_at>Date.now()/1000+60){nawaSession=session;return session}
+  if(!session.refresh_token){saveNawaSession(null);return null}
+  try{
+    const refreshed=await nawaRequest('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:session.refresh_token})});
+    session=sessionFromResponse(refreshed);saveNawaSession(session);return session;
+  }catch(error){if(/refresh_token_not_found|invalid refresh token|invalid_grant/i.test(error.message))saveNawaSession(null);return null}
+}
 function showAccess(mode='register'){
   accessMode=mode;
   document.getElementById('accessTitle').textContent=mode==='register'?'أنشئ حسابك':'تسجيل الدخول';
-  const nameField=document.getElementById('regName').closest('label');
-  nameField.style.display=mode==='register'?'block':'none';
-  const submit=document.querySelector('#accessModal .btn');
-  submit.textContent=mode==='register'?'إنشاء حساب':'تسجيل الدخول';
+  const nameField=document.getElementById('regName').closest('label');nameField.style.display=mode==='register'?'block':'none';
+  const submit=document.querySelector('#accessModal .btn');submit.textContent=mode==='register'?'إنشاء حساب':'تسجيل الدخول';
   document.querySelector('#accessModal .sub').textContent=mode==='register'?'أنشئ حسابًا مجانيًا. ستصلك رسالة لتأكيد بريدك قبل الدخول.':'سجّل الدخول ببريدك وكلمة المرور.';
-  document.getElementById('accessModal').classList.add('open');
+  document.getElementById('accessModal').classList.add('open')
+}
+function showNawaAuthError(error){
+  const message=String(error&&error.message||'تعذر إكمال الطلب.');
+  if(/email_address_not_authorized/i.test(message))notify('خدمة البريد الافتراضية لا تسمح بإرسال رسالة لهذا العنوان. يلزم إعداد SMTP مخصص في Supabase.');
+  else if(/over_email_send_rate_limit|rate limit/i.test(message))notify('تم تجاوز حد رسائل التحقق. انتظر قليلًا قبل إعادة المحاولة.');
+  else if(/failed to fetch|networkerror|load failed/i.test(message))notify('تعذر الاتصال بخدمة تسجيل الدخول. تحقق من اتصالك وأعد المحاولة.');
+  else notify(message)
 }
 demoRegister=async function(){
   const email=document.getElementById('regEmail').value.trim();
@@ -89,32 +126,51 @@ demoRegister=async function(){
   const button=document.querySelector('#accessModal .btn');button.disabled=true;
   try{
     if(accessMode==='login'){
-      const {error}=await nawaAuth.auth.signInWithPassword({email,password});
-      if(error)throw error;
-      closeModal('accessModal');notify('تم تسجيل الدخول. يمكنك الآن فتح الدروس المجانية.');
+      const data=await nawaRequest('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password})});
+      const session=sessionFromResponse(data);if(!session)throw new Error('تعذر إنشاء جلسة دخول. تحقق من البريد وكلمة المرور.');
+      saveNawaSession(session);closeModal('accessModal');notify('تم تسجيل الدخول. يمكنك الآن فتح الدروس المجانية.');await loadCourseContent()
     }else{
       const fullName=document.getElementById('regName').value.trim();
-      const {error}=await nawaAuth.auth.signUp({email,password,options:{data:{full_name:fullName},emailRedirectTo:nawaSiteUrl}});
-      if(error)throw error;
-      notify('تحقق من بريدك واضغط رابط التأكيد، ثم ارجع إلى الموقع وسجّل الدخول.');
+      const path='/auth/v1/signup?redirect_to='+encodeURIComponent(nawaSiteUrl);
+      const data=await nawaRequest(path,{method:'POST',body:JSON.stringify({email,password,data:{full_name:fullName}})});
+      const session=sessionFromResponse(data);
+      if(session){saveNawaSession(session);closeModal('accessModal');notify('تم إنشاء الحساب وتسجيل الدخول.')}
+      else{document.getElementById('regPass').value='';notify('تم إرسال طلب التسجيل. افحص بريدك ومجلد الرسائل غير المرغوب فيها لتأكيد الحساب.')}
     }
-  }catch(error){notify(error.message||'تعذر إكمال الطلب. راجع إعدادات Supabase.')}finally{button.disabled=false}
+  }catch(error){showNawaAuthError(error)}finally{button.disabled=false}
 };
-function updateNawaAccount(session){demoSignedIn=!!session;const adminButton=document.querySelector('.admin-entry');if(adminButton)adminButton.textContent=demoSignedIn?'لوحة المسؤول':'دخول المسؤول';let signOutButton=document.querySelector('.signout-entry');if(demoSignedIn&&!signOutButton){document.querySelector('.actions').insertAdjacentHTML('afterbegin','<button class="btn outline signout-entry" type="button">تسجيل الخروج</button>');signOutButton=document.querySelector('.signout-entry');signOutButton.onclick=async()=>{const {error}=await nawaAuth.auth.signOut();if(error)notify('تعذر تسجيل الخروج. حاول مرة أخرى.');else notify('تم تسجيل الخروج.')}}else if(!demoSignedIn&&signOutButton)signOutButton.remove()}
-async function loadCourseContent(){if(!demoSignedIn)return;const {data,error}=await nawaAuth.from('course_content').select('course_id,content');if(error){notify('تعذر تحميل الدروس. تأكد من تطبيق ملف SQL في Supabase.');return}for(const row of data||[])resources[row.course_id]=row.content}
-async function nawaSyncSession(){const {data:{session},error}=await nawaAuth.auth.getSession();if(error){notify('تعذر التحقق من الجلسة. أعد تحميل الصفحة.');return}updateNawaAccount(session);if(session)loadCourseContent()}
-nawaAuth.auth.onAuthStateChange((_event,session)=>{updateNawaAccount(session);if(session)setTimeout(loadCourseContent,0)});
+function updateNawaAccount(session){
+  demoSignedIn=!!session;
+  const adminButton=document.querySelector('.admin-entry');if(adminButton)adminButton.textContent=demoSignedIn?'لوحة المسؤول':'دخول المسؤول';
+  let signOutButton=document.querySelector('.signout-entry');
+  if(demoSignedIn&&!signOutButton){document.querySelector('.actions').insertAdjacentHTML('afterbegin','<button class="btn outline signout-entry" type="button">تسجيل الخروج</button>');signOutButton=document.querySelector('.signout-entry');signOutButton.onclick=async()=>{const current=await getNawaSession();try{if(current)await nawaRequest('/auth/v1/logout',{method:'POST'},current.access_token)}catch{}saveNawaSession(null);notify('تم تسجيل الخروج.')}}
+  else if(!demoSignedIn&&signOutButton)signOutButton.remove()
+}
+async function loadCourseContent(){
+  const session=await getNawaSession();if(!session)return;
+  try{
+    const rows=await nawaRequest('/rest/v1/course_content?select=course_id,content',{},session.access_token);
+    for(const row of rows||[])resources[row.course_id]=row.content;
+  }catch(error){notify('تعذر تحميل الدروس من قاعدة البيانات. '+String(error.message||''))}
+}
+async function nawaSyncSession(){const session=await getNawaSession();updateNawaAccount(session);if(session)await loadCourseContent()}
 nawaSyncSession();
 document.getElementById('cards').addEventListener('click',event=>{const link=event.target.closest('.card a');if(link){event.preventDefault();event.stopPropagation();const card=link.closest('.card');showCourse(card.dataset.course)}},true);
 document.querySelector('.admin-entry').onclick=async()=>{
-  if(!demoSignedIn){showAccess('login');return}
-  const {data:{user}}=await nawaAuth.auth.getUser();
-  if(!user){demoSignedIn=false;showAccess('login');return}
-  const {data,error}=await nawaAuth.from('user_roles').select('role').eq('user_id',user.id).maybeSingle();
-  if(error){notify('لم يُضبط جدول صلاحيات المسؤول بعد. طبّق ملف إعداد Supabase أولًا.');return}
-  if(data?.role==='admin'){document.getElementById('adminModal').classList.add('open');document.querySelector('#adminModal .sub').textContent='تم التحقق من حساب المسؤول: '+user.email;document.querySelector('#adminModal .modal-intro').textContent='تم التحقق من صلاحية المسؤول. إدارة بيانات الدورات محفوظة في جدول Supabase ومحمية بسياسات قاعدة البيانات.';document.querySelector('#adminModal .btn').textContent='تم تسجيل الدخول كمسؤول'}
-  else notify('تم تسجيل الدخول، لكن هذا الحساب لا يملك صلاحية المسؤول.');
+  const session=await getNawaSession();if(!session){showAccess('login');return}
+  try{
+    const user=await nawaRequest('/auth/v1/user',{},session.access_token);
+    const roles=await nawaRequest('/rest/v1/user_roles?select=role&user_id=eq.'+encodeURIComponent(user.id),{},session.access_token);
+    if(roles&&roles[0]&&roles[0].role==='admin'){
+      document.getElementById('adminModal').classList.add('open');
+      document.querySelector('#adminModal .sub').textContent='تم التحقق من حساب المسؤول: '+user.email;
+      document.querySelector('#adminModal .modal-intro').textContent='تم التحقق من صلاحية المسؤول. إدارة بيانات الدورات محفوظة في جدول Supabase ومحمية بسياسات قاعدة البيانات.';
+      document.querySelector('#adminModal .btn').textContent='تم تسجيل الدخول كمسؤول'
+    }else notify('تم تسجيل الدخول، لكن هذا الحساب لا يملك صلاحية المسؤول.')
+  }catch(error){showNawaAuthError(error)}
 };
+document.querySelector('.actions .btn:not(.admin-entry)').onclick=()=>showAccess('register');
+document.querySelector('#accessModal .btn').onclick=demoRegister;
 </script></body></html>
 
 
