@@ -60,7 +60,7 @@ function openModal(id){document.getElementById(id).classList.add('open')}functio
 document.getElementById('cards').addEventListener('click',e=>{if(e.target.closest('.card'))showCourse(e.target.closest('.card').dataset.course)});document.getElementById('cards').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('.card'))showCourse(e.target.dataset.course)});document.querySelector('.actions').insertAdjacentHTML('afterbegin','<button class="btn outline admin-entry" onclick="openModal(\'adminModal\')">إدارة الموقع</button>');
 const oldCard=courseCard;courseCard=function(c){let html=oldCard(c).replace('data-category="'+c.category+'"','data-category="'+c.category+'" data-course="'+c.id+'" tabindex="0"');if(c.category==='paid')html=html.replace('<p>'+c.desc[lang]+'</p>','<p>اشترك لمشاهدة الدروس والتقارير والملفات التعليمية.</p>');return html};render();
 </script>
-<div id="accessModal" class="modal" aria-hidden="true"><div class="modalbox adminbox"><button class="close" onclick="closeModal('accessModal')">×</button><span class="kicker">NAWA ACCOUNT</span><h2 id="accessTitle">أنشئ حسابك</h2><p class="sub">أنشئ حسابًا مجانيًا للوصول إلى الدروس. ستُرسل بيانات التسجيل إلى خدمة Supabase الآمنة.</p><label>الاسم الكامل<input id="regName" type="text" autocomplete="name" placeholder="اسمك"></label><label>البريد الإلكتروني<input id="regEmail" type="email" autocomplete="email" placeholder="name@example.com"></label><label>كلمة المرور<input id="regPass" type="password" autocomplete="new-password" minlength="12" placeholder="12 حرفًا على الأقل"></label><button class="btn" onclick="demoRegister()">إنشاء حساب</button><p style="font-size:12px;margin-top:15px">لديك حساب؟ <a class="text-link" href="#" onclick="event.preventDefault();switchAccess()">تسجيل الدخول</a></p><small>استخدم كلمة مرور قوية وفريدة للموقع. لا تشاركها مع أحد.</small></div></div>
+<div id="accessModal" class="modal" aria-hidden="true"><div class="modalbox adminbox"><button class="close" onclick="closeModal('accessModal')">×</button><span class="kicker">NAWA ACCOUNT</span><h2 id="accessTitle">أنشئ حسابك</h2><p class="sub">أنشئ حسابًا مجانيًا للوصول إلى الدروس. ستُرسل بيانات التسجيل إلى خدمة Supabase الآمنة.</p><label id="regNameLabel">الاسم الكامل<input id="regName" type="text" autocomplete="name" placeholder="اسمك"></label><label>البريد الإلكتروني<input id="regEmail" type="email" autocomplete="email" placeholder="name@example.com"></label><label id="regPassLabel">كلمة المرور<input id="regPass" type="password" autocomplete="new-password" minlength="12" placeholder="12 حرفًا على الأقل"></label><label id="regPassConfirmLabel" hidden>تأكيد كلمة المرور<input id="regPassConfirm" type="password" autocomplete="new-password" minlength="12" placeholder="أعد كتابة كلمة المرور الجديدة"></label><button class="btn" onclick="demoRegister()">إنشاء حساب</button><p id="authSwitchRow" style="font-size:12px;margin-top:15px">لديك حساب؟ <a class="text-link" href="#" onclick="event.preventDefault();switchAccess()">تسجيل الدخول</a></p><p id="forgotRow" style="font-size:12px;margin:6px 0 12px" hidden><a class="text-link" href="#" onclick="event.preventDefault();showAccess('forgot')">نسيت كلمة المرور؟</a></p><small id="authHint">استخدم كلمة مرور قوية وفريدة للموقع. لا تشاركها مع أحد.</small></div></div>
 <div id="payModal" class="modal" aria-hidden="true"><div class="modalbox adminbox"><button class="close" onclick="closeModal('payModal')">×</button><span class="kicker">NAWA MEMBERSHIP</span><h2>فتح الدورة المدفوعة</h2><p class="sub" id="payCourseName"></p><p class="modal-intro">سيظهر السعر وخيارات الدفع بعد ربط الموقع ببوابة دفع مرخصة. لا توجد عملية دفع حقيقية في هذا النموذج، لذلك لن نفتح الدروس أو الملفات المدفوعة.</p><button class="btn" onclick="notify('الدفع غير مفعّل بعد. يلزم ربط بوابة دفع قبل فتح المحتوى.')">عرض خيارات الاشتراك</button></div></div>
 <script>
 let demoSignedIn=false,accessMode='register';function showAccess(mode='register'){accessMode=mode;document.getElementById('accessTitle').textContent=mode==='register'?'أنشئ حسابك':'تسجيل الدخول';document.getElementById('accessModal').classList.add('open')}function switchAccess(){showAccess(accessMode==='register'?'login':'register')}function demoRegister(){const email=document.getElementById('regEmail').value,pass=document.getElementById('regPass').value;if(!email||pass.length<12){notify('أدخل بريدًا إلكترونيًا وكلمة مرور من 12 حرفًا على الأقل.');return}notify('الحسابات الحقيقية غير مفعّلة بعد. اربط خدمة تسجيل الدخول لإكمال التسجيل بأمان.')}function guardCourse(id){const c=courses.find(x=>x.id===id);if(!demoSignedIn){showAccess();return}if(c.category==='paid'){document.getElementById('payCourseName').textContent=c.title.ar;openModal('payModal');return}showCourse(id)}
@@ -114,7 +114,7 @@ async function nawaRequest(path,options={},accessToken=null){
   const response=await fetch(nawaSupabaseUrl+path,{...options,headers:{...headers,...(options.headers||{})}});
   const raw=await response.text();let data={};
   try{data=raw?JSON.parse(raw):{}}catch{data={message:raw}}
-  if(!response.ok)throw new Error(data.msg||data.message||data.error_description||data.error||('HTTP '+response.status));
+  if(!response.ok){const error=new Error(data.msg||data.message||data.error_description||data.error||('HTTP '+response.status));error.code=data.code||data.error_code||data.error||'';throw error}
   return data;
 }
 function sessionFromResponse(data){
@@ -134,36 +134,83 @@ async function getNawaSession(){
 }
 function showAccess(mode='register'){
   accessMode=mode;
-  document.getElementById('accessTitle').textContent=mode==='register'?'أنشئ حسابك':'تسجيل الدخول';
-  const nameField=document.getElementById('regName').closest('label');nameField.style.display=mode==='register'?'block':'none';
-  const submit=document.querySelector('#accessModal .btn');submit.textContent=mode==='register'?'إنشاء حساب':'تسجيل الدخول';
-  document.querySelector('#accessModal .sub').textContent=mode==='register'?'أنشئ حسابًا مجانيًا. ستصلك رسالة لتأكيد بريدك قبل الدخول.':'سجّل الدخول ببريدك وكلمة المرور.';
+  const recovery=mode==='recovery',forgot=mode==='forgot',login=mode==='login';
+  document.getElementById('accessTitle').textContent=recovery?'تغيير كلمة المرور':forgot?'استعادة كلمة المرور':login?'تسجيل الدخول':'أنشئ حسابك';
+  document.getElementById('regNameLabel').hidden=mode!=='register';
+  document.getElementById('regPassLabel').hidden=forgot;
+  document.getElementById('regPassConfirmLabel').hidden=!recovery;
+  document.getElementById('regPass').autocomplete=recovery?'new-password':login?'current-password':'new-password';
+  document.getElementById('regEmail').readOnly=recovery;
+  document.getElementById('forgotRow').hidden=!login;
+  document.getElementById('authSwitchRow').hidden=recovery;
+  document.getElementById('authSwitchRow').innerHTML=forgot
+    ?'العودة إلى <a class="text-link" href="#" onclick="event.preventDefault();showAccess(\'login\')">تسجيل الدخول</a>'
+    :login
+      ?'ليس لديك حساب؟ <a class="text-link" href="#" onclick="event.preventDefault();showAccess(\'register\')">إنشاء حساب</a>'
+      :recovery?'':'لديك حساب؟ <a class="text-link" href="#" onclick="event.preventDefault();showAccess(\'login\')">تسجيل الدخول</a>';
+  document.getElementById('authHint').textContent=recovery?'أدخل كلمة مرور جديدة لا تقل عن 12 حرفًا.':'استخدم البريد المسجل في Nawa. لا تشارك كلمة مرورك مع أحد.';
+  document.querySelector('#accessModal .sub').textContent=recovery
+    ?'تحققنا من رابط الاستعادة. عيّن كلمة مرور جديدة لحسابك.'
+    :forgot?'أدخل البريد المرتبط بحسابك، وسنرسل رابط تأكيد لإعادة تعيين كلمة المرور إذا كان الحساب موجودًا.'
+    :login?'سجّل الدخول ببريدك وكلمة المرور. إذا نسيتها، يمكنك استعادتها عبر البريد.'
+    :'أنشئ حسابًا مجانيًا. ستصلك رسالة لتأكيد بريدك قبل الدخول.';
+  const submit=document.querySelector('#accessModal .btn');
+  submit.textContent=recovery?'حفظ كلمة المرور':forgot?'إرسال رابط الاستعادة':login?'تسجيل الدخول':'إنشاء حساب';
+  document.getElementById('regPass').value='';
+  document.getElementById('regPassConfirm').value='';
   document.getElementById('accessModal').classList.add('open')
 }
 function showNawaAuthError(error){
-  const message=String(error&&error.message||'تعذر إكمال الطلب.');
-  if(/email_address_not_authorized/i.test(message))notify('خدمة البريد الافتراضية لا تسمح بإرسال رسالة لهذا العنوان. يلزم إعداد SMTP مخصص في Supabase.');
+  const message=String(error&&error.message||'تعذر إكمال الطلب.'),code=String(error&&error.code||'');
+  if(/user_already_exists|already registered|already been registered/i.test(code+' '+message))notify('هذا البريد مسجّل مسبقًا. سجّل الدخول أو اختر «نسيت كلمة المرور؟».');
+  else if(/invalid login credentials/i.test(message))notify('البريد أو كلمة المرور غير صحيحين. إذا نسيت كلمة المرور فاختر استعادتها عبر البريد.');
+  else if(/email_address_not_authorized/i.test(message))notify('خدمة البريد الافتراضية لا تسمح بإرسال رسالة لهذا العنوان. يلزم إعداد SMTP مخصص في Supabase.');
   else if(/over_email_send_rate_limit|rate limit/i.test(message))notify('تم تجاوز حد رسائل التحقق. انتظر قليلًا قبل إعادة المحاولة.');
   else if(/failed to fetch|networkerror|load failed/i.test(message))notify('تعذر الاتصال بخدمة تسجيل الدخول. تحقق من اتصالك وأعد المحاولة.');
   else notify(message)
 }
+let passwordRecoveryToken=null;
+async function handlePasswordRecoveryRedirect(){
+  const params=new URLSearchParams(location.hash.replace(/^#/,''));
+  if(params.get('type')!=='recovery'||!params.get('access_token'))return;
+  passwordRecoveryToken=params.get('access_token');
+  document.getElementById('regEmail').readOnly=false;
+  history.replaceState(null,document.title,location.pathname+location.search);
+  showAccess('recovery');
+}
 demoRegister=async function(){
   const email=document.getElementById('regEmail').value.trim();
   const password=document.getElementById('regPass').value;
-  if(!email||password.length<12){notify('أدخل بريدك وكلمة مرور لا تقل عن 12 حرفًا.');return}
   const button=document.querySelector('#accessModal .btn');button.disabled=true;
   try{
-    if(accessMode==='login'){
+    if(accessMode==='forgot'){
+      if(!email){notify('أدخل البريد الإلكتروني المرتبط بحسابك.');return}
+      await nawaRequest('/auth/v1/recover?redirect_to='+encodeURIComponent(nawaSiteUrl),{method:'POST',body:JSON.stringify({email})});
+      notify('إذا كان البريد مرتبطًا بحساب، فستصلك رسالة استعادة. افحص الوارد والرسائل غير المرغوب فيها.');
+    }else if(accessMode==='recovery'){
+      const confirm=document.getElementById('regPassConfirm').value;
+      if(!password||password.length<12){notify('اختر كلمة مرور من 12 حرفًا على الأقل.');return}
+      if(password!==confirm){notify('كلمتا المرور غير متطابقتين.');return}
+      if(!passwordRecoveryToken)throw new Error('انتهت صلاحية رابط الاستعادة. اطلب رابطًا جديدًا.');
+      const data=await nawaRequest('/auth/v1/user',{method:'PUT',body:JSON.stringify({password})},passwordRecoveryToken);
+      passwordRecoveryToken=null;
+      document.getElementById('regEmail').readOnly=false;
+      if(data.access_token)saveNawaSession(sessionFromResponse(data));
+      closeModal('accessModal');notify('تم تغيير كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول.');
+      showAccess('login');
+    }else if(accessMode==='login'){
+      if(!email||!password){notify('أدخل البريد الإلكتروني وكلمة المرور.');return}
       const data=await nawaRequest('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password})});
       const session=sessionFromResponse(data);if(!session)throw new Error('تعذر إنشاء جلسة دخول. تحقق من البريد وكلمة المرور.');
       saveNawaSession(session);closeModal('accessModal');notify('تم تسجيل الدخول. يمكنك الآن فتح الدروس المجانية.');await loadCourseContent()
     }else{
+      if(!email||password.length<12){notify('أدخل بريدك وكلمة مرور لا تقل عن 12 حرفًا.');return}
       const fullName=document.getElementById('regName').value.trim();
       const path='/auth/v1/signup?redirect_to='+encodeURIComponent(nawaSiteUrl);
       const data=await nawaRequest(path,{method:'POST',body:JSON.stringify({email,password,data:{full_name:fullName}})});
       const session=sessionFromResponse(data);
       if(session){saveNawaSession(session);closeModal('accessModal');notify('تم إنشاء الحساب وتسجيل الدخول.')}
-      else{document.getElementById('regPass').value='';notify('تم إرسال طلب التسجيل. افحص بريدك ومجلد الرسائل غير المرغوب فيها لتأكيد الحساب.')}
+      else{document.getElementById('regPass').value='';notify('إذا كان البريد جديدًا، فستصلك رسالة تأكيد. إذا كان مسجلًا بالفعل، سجّل الدخول أو استخدم «نسيت كلمة المرور؟».')}
     }
   }catch(error){showNawaAuthError(error)}finally{button.disabled=false}
 };
@@ -217,6 +264,7 @@ async function loadCourseContent(){
 }
 async function nawaSyncSession(){const session=await getNawaSession();updateNawaAccount(session);if(session)await loadCourseContent()}
 nawaSyncSession();
+handlePasswordRecoveryRedirect();
 document.getElementById('cards').addEventListener('click',event=>{const link=event.target.closest('.card a');if(link){event.preventDefault();event.stopPropagation();const card=link.closest('.card');showCourse(card.dataset.course)}},true);
 document.querySelector('.admin-entry').onclick=async()=>{
   const session=await getNawaSession();if(!session){showAccess('login');return}
