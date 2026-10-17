@@ -136,9 +136,9 @@ function showAccess(mode='register'){
   accessMode=mode;
   const recovery=mode==='recovery',forgot=mode==='forgot',login=mode==='login';
   document.getElementById('accessTitle').textContent=recovery?'تغيير كلمة المرور':forgot?'استعادة كلمة المرور':login?'تسجيل الدخول':'أنشئ حسابك';
-  document.getElementById('regNameLabel').hidden=mode!=='register';
-  document.getElementById('regPassLabel').hidden=forgot;
-  document.getElementById('regPassConfirmLabel').hidden=!recovery;
+  document.getElementById('regNameLabel').style.display=mode==='register'?'block':'none';
+  document.getElementById('regPassLabel').style.display=forgot?'none':'block';
+  document.getElementById('regPassConfirmLabel').style.display=recovery?'block':'none';
   document.getElementById('regPass').autocomplete=recovery?'new-password':login?'current-password':'new-password';
   document.getElementById('regEmail').readOnly=recovery;
   document.getElementById('forgotRow').hidden=!login;
