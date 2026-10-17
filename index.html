@@ -234,6 +234,7 @@ document.querySelector('.admin-entry').onclick=async()=>{
 };
 document.querySelector('.actions .btn:not(.admin-entry)').onclick=()=>showAccess('register');
 document.querySelector('#accessModal .btn').onclick=demoRegister;
+</script>
 <script>
 const libraryItems=[
 {id:'physics1',category:'science',icon:'⚛️',title:{ar:'الفيزياء الجامعية — المجلد الأول',en:'University Physics, Volume 1',ku:'فیزیکی زانکۆ — بەشی یەکەم'},desc:{ar:'مرجع جامعي في الميكانيكا والموجات والحرارة. قراءة مجانية على OpenStax مع خيارات PDF من صفحة الكتاب.',en:'University-level mechanics, waves and thermodynamics. Read online free; PDF options are on the official book page.',ku:'سەرچاوەی ئاستی زانکۆ بۆ میکانیک و شەپۆل و گەرما. خوێندنەوە و PDF لە پەڕەی فەرمی کتێبەکەدا.'},language:'English',source:'OpenStax · CC BY-NC-SA 4.0',read:'https://openstax.org/books/university-physics-volume-1/pages/1-introduction',download:'https://openstax.org/details/books/university-physics-volume-1'},
@@ -250,7 +251,7 @@ function renderLibrary(){const t=libraryText[lang]||libraryText.ar,root=document
 document.getElementById('libraryFilters').addEventListener('click',e=>{const b=e.target.closest('[data-library-filter]');if(b){libraryFilter=b.dataset.libraryFilter;renderLibrary()}});
 document.getElementById('librarySearch').addEventListener('input',renderLibrary);
 renderLibrary();
-</script></script></body></html>
+</script></body></html>
 
 
 
