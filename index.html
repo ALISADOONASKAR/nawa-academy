@@ -75,10 +75,10 @@ let demoSignedIn=false,accessMode='register';function showAccess(mode='register'
   document.getElementById('forgotRow').hidden=!login;
   document.getElementById('authSwitchRow').hidden=recovery;
   document.getElementById('authSwitchRow').innerHTML=forgot
-    ?'العودة إلى <a class="text-link" href="#" onclick="event.preventDefault();showAccess(\\'login\\')">تسجيل الدخول</a>'
+    ?'العودة إلى <a class="text-link" href="#" onclick="event.preventDefault();showAccess(\'login\')">تسجيل الدخول</a>'
     :login
-      ?'ليس لديك حساب؟ <a class="text-link" href="#" onclick="event.preventDefault();showAccess(\\'register\\')">إنشاء حساب</a>'
-      :recovery?'':'لديك حساب؟ <a class="text-link" href="#" onclick="event.preventDefault();showAccess(\\'login\\')">تسجيل الدخول</a>';
+      ?'ليس لديك حساب؟ <a class="text-link" href="#" onclick="event.preventDefault();showAccess(\'register\')">إنشاء حساب</a>'
+      :recovery?'':'لديك حساب؟ <a class="text-link" href="#" onclick="event.preventDefault();showAccess(\'login\')">تسجيل الدخول</a>';
   document.getElementById('authHint').textContent=recovery?'أدخل كلمة مرور جديدة لا تقل عن 8 أحرف.':'استخدم البريد المرتبط بحسابك ولا تشارك كلمة مرورك.';
   document.querySelector('#accessModal .sub').textContent=recovery
     ?'تحققنا من رابط الاستعادة. عيّن كلمة مرور جديدة لحسابك.'
