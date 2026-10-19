@@ -63,6 +63,39 @@ const oldCard=courseCard;courseCard=function(c){let html=oldCard(c).replace('dat
 <div id="accessModal" class="modal" aria-hidden="true"><div class="modalbox adminbox"><button class="close" onclick="closeModal('accessModal')">×</button><span class="kicker">NAWA ACCOUNT</span><h2 id="accessTitle">أنشئ حسابك</h2><p class="sub">أنشئ حسابًا مجانيًا للوصول إلى الدروس. ستُرسل بيانات التسجيل إلى خدمة Supabase الآمنة.</p><label id="regNameLabel">الاسم الكامل<input id="regName" type="text" autocomplete="name" placeholder="اسمك"></label><label id="regEmailLabel">البريد الإلكتروني<input id="regEmail" type="email" autocomplete="email" placeholder="name@example.com"></label><label id="regPassLabel">كلمة المرور<input id="regPass" type="password" autocomplete="new-password" minlength="8" placeholder="8 أحرف على الأقل"></label><label id="regPassConfirmLabel" hidden>تأكيد كلمة المرور<input id="regPassConfirm" type="password" autocomplete="new-password" minlength="8" placeholder="أعد كتابة كلمة المرور الجديدة"></label><button class="btn" onclick="demoRegister()">إنشاء حساب</button><p id="authSwitchRow" style="font-size:12px;margin-top:15px">لديك حساب؟ <a class="text-link" href="#" onclick="event.preventDefault();switchAccess()">تسجيل الدخول</a></p><p id="forgotRow" style="font-size:12px;margin:6px 0 12px" hidden><a class="text-link" href="#" onclick="event.preventDefault();showAccess('forgot')">نسيت كلمة المرور؟</a></p><small id="authHint">استخدم كلمة مرور قوية وفريدة للموقع. لا تشاركها مع أحد.</small></div></div>
 <div id="payModal" class="modal" aria-hidden="true"><div class="modalbox adminbox"><button class="close" onclick="closeModal('payModal')">×</button><span class="kicker">NAWA MEMBERSHIP</span><h2>فتح الدورة المدفوعة</h2><p class="sub" id="payCourseName"></p><p class="modal-intro">سيظهر السعر وخيارات الدفع بعد ربط الموقع ببوابة دفع مرخصة. لا توجد عملية دفع حقيقية في هذا النموذج، لذلك لن نفتح الدروس أو الملفات المدفوعة.</p><button class="btn" onclick="notify('الدفع غير مفعّل بعد. يلزم ربط بوابة دفع قبل فتح المحتوى.')">عرض خيارات الاشتراك</button></div></div>
 <script>
+const nawaSupabaseUrl='https://dxtxxbbkyyjfqihjhgca.supabase.co';
+const nawaPublishableKey='sb_publishable_z2u3iquFvp1bOyRjxnCuMA_vfd0mmm9';
+const nawaSiteUrl='https://alisadoonaskar.github.io/nawa-academy/';
+const nawaSessionKey='nawa-auth-session-v1';
+function sessionFromResponse(data){
+ if(!data||!data.access_token)return null;
+ const expiresAt=data.expires_at||Math.floor(Date.now()/1000)+(Number(data.expires_in)||3600);
+ return {access_token:data.access_token,refresh_token:data.refresh_token||'',expires_at:expiresAt,user:data.user||null};
+}
+function saveNawaSession(session){
+ try{if(session)localStorage.setItem(nawaSessionKey,JSON.stringify(session));else localStorage.removeItem(nawaSessionKey)}catch{}
+ if(typeof updateNawaAccount==='function')updateNawaAccount(session);
+}
+async function nawaRequest(path,options={},accessToken=null){
+ const headers={'Content-Type':'application/json','apikey':nawaPublishableKey,...(options.headers||{})};
+ if(accessToken)headers.Authorization='Bearer '+accessToken;
+ const response=await fetch(nawaSupabaseUrl+path,{...options,headers});
+ const text=await response.text();let data=null;
+ try{data=text?JSON.parse(text):null}catch{data={message:text||'تعذر قراءة استجابة خدمة الحساب.'}}
+ if(!response.ok){const error=new Error(data&&data.msg||data&&data.message||data&&data.error_description||'تعذر الاتصال بخدمة الحساب ('+response.status+').');error.status=response.status;error.code=data&&data.code;throw error}
+ return data;
+}
+async function getNawaSession(){
+ let session;try{session=JSON.parse(localStorage.getItem(nawaSessionKey)||'null')}catch{return null}
+ if(!session||!session.access_token)return null;
+ if(Number(session.expires_at||0)>Math.floor(Date.now()/1000)+45)return session;
+ if(!session.refresh_token){saveNawaSession(null);return null}
+ try{
+  const data=await nawaRequest('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:session.refresh_token})});
+  const refreshed=sessionFromResponse(data);if(!refreshed){saveNawaSession(null);return null}
+  saveNawaSession(refreshed);return refreshed
+ }catch{saveNawaSession(null);return null}
+}
 let demoSignedIn=false,accessMode='register';function showAccess(mode='register'){
   accessMode=mode;
   const recovery=mode==='recovery',forgot=mode==='forgot',login=mode==='login',register=mode==='register';
